@@ -5,8 +5,6 @@
   (:import
    [java.net InetSocketAddress]
    [java.nio.channels AsynchronousSocketChannel CompletionHandler]
-
-   ;; todo: remove
    [java.nio ByteBuffer]))
 
 ;; канал можно создать в группе, а в группу можно передать тредпул, может быть так можно сделать
@@ -46,7 +44,10 @@
     (let [address (InetSocketAddress. "localhost" 4401)
           sock    (AsynchronousSocketChannel/open)]
       (a/<! (sock-connect sock address))
-      (a/<! (sock-write sock (m/encode-startup-message {:user "postgres"})))
+      (a/<! (sock-write sock (m/encode m/StartupMessage
+                                       {:version-major 3
+                                        :version-minor 0
+                                        :parameters    {:user "postgres"}})))
       (a/<! (sock-read sock))
       {:sock sock})))
 
