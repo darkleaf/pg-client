@@ -1,0 +1,2 @@
+{:deps {org.clojure/core.async {:mvn/version "0.4.490"}
+        smee/binary            {:mvn/version "0.5.4"}}}
