@@ -70,7 +70,7 @@
     (ByteBuffer/wrap res-bytes)))
 
 (defn decode-header [buff]
-  (decode-from-buffer header buff))
+  (decode-from-buffer header-with-tag buff))
 
 (defn decode-body [spec buff]
   (decode-from-buffer (:codec spec) buff))
