@@ -60,4 +60,8 @@
                                                 :parameters    {:user "postgres"}})))
         (then-next #(sock-read sock m/header-length))
         (then-apply m/decode-header)
+        (then-compose (fn [{:keys [tag length]}]
+                        (let [spec (m/tag->spec tag)]
+                          (-> (sock-read sock length)
+                              (then-apply #(m/decode-body spec %))))))
         (.get))))

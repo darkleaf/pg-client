@@ -5,6 +5,9 @@
    [java.io ByteArrayInputStream ByteArrayOutputStream]
    [java.nio ByteBuffer]))
 
+(defn- not-used [& args]
+  (throw (ex-info "Not used" {:args args})))
+
 (defn- encode-as-byte-array [codec value]
   (with-open [out (ByteArrayOutputStream.)]
     (b/encode codec out value)
@@ -42,6 +45,34 @@
    :length :int-be
    :body   (b/blob)))
 
+(defn encode [spec value]
+  (let [tag       (:tag spec)
+        codec     (:codec spec)
+        arr       (encode-as-byte-array codec value)
+        length    (+ 4 (count arr)) ;; tag не считается
+        res-codec (if (some? tag) header-with-tag header-without-tag)
+        res-bytes (encode-as-byte-array res-codec {:tag    tag
+                                                   :length length
+                                                   :body   arr})]
+    (ByteBuffer/wrap res-bytes)))
+
+
+(def ^:private header
+  (b/ordered-map
+   :tag    tag
+   :length :int-be))
+
+(def header-length 5)
+
+(defn decode-header [buff]
+  (decode-from-buffer header buff))
+
+(defn decode-body [spec buff]
+  (decode-from-buffer (:codec spec) buff))
+
+;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+;; диспетчерезация сообщений от сервера идет по тэгу и длине сообщения О_о
 
 (def StartupMessage
   {:tag nil
@@ -54,24 +85,21 @@
            (fn [val]
              [(update val :parameters #(map (fn [[k v]] [(name k) v]) %))
               0])
-           (constantly :not-used))})
+           not-used)})
 
+(def auth-code->codec
+  {5 (b/compile-codec
+      (b/ordered-map
+       ;; хотя может это должны быть просто байты
+       :salt (b/string "ASCII" :length 4))
+      not-used
+      #(assoc % :name :AuthenticationMD5Password))})
 
-(defn encode [spec value]
-  (let [tag       (:tag spec)
-        codec     (:codec spec)
-        arr       (encode-as-byte-array codec value)
-        length    (+ 4 (count arr)) ;; tag не считается
-        res-codec (if (some? tag) header-with-tag header-without-tag)
-        res-bytes (encode-as-byte-array res-codec {:tag    tag
-                                                   :length length
-                                                   :body   arr})]
-    (ByteBuffer/wrap res-bytes)))
+(def Authentication
+  {:tag \R
+   :codec (b/header :int-be
+                    auth-code->codec
+                    not-used)})
 
-(def header-length 5)
-
-(defn decode-header [buff]
-  (decode-from-buffer header-with-tag buff))
-
-(defn decode-body [spec buff]
-  (decode-from-buffer (:codec spec) buff))
+(def tag->spec
+  {\R Authentication})
