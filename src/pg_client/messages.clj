@@ -61,13 +61,14 @@
   (let [tag       (:tag spec)
         codec     (:codec spec)
         arr       (encode-as-byte-array codec value)
-        length    (+ (count arr)
-                     (if (some? tag) 5 4))
+        length    (+ 4 (count arr)) ;; tag не считается
         res-codec (if (some? tag) header-with-tag header-without-tag)
         res-bytes (encode-as-byte-array res-codec {:tag    tag
                                                    :length length
                                                    :body   arr})]
     (ByteBuffer/wrap res-bytes)))
+
+(def header-length 5)
 
 (defn decode-header [buff]
   (decode-from-buffer header-with-tag buff))
