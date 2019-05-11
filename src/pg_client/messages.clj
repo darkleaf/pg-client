@@ -35,15 +35,13 @@
   (b/c-string "UTF8"))
 
 (def ^:private header-with-tag
-  (b/ordered-map
-   :tag    tag
-   :length :int-be
-   :body   (b/blob)))
+  (b/ordered-map :tag    tag
+                 :length :int-be
+                 :body   (b/blob)))
 
 (def ^:private header-without-tag
-  (b/ordered-map
-   :length :int-be
-   :body   (b/blob)))
+  (b/ordered-map :length :int-be
+                 :body   (b/blob)))
 
 (defn encode [spec value]
   (let [tag       (:tag spec)
@@ -58,9 +56,8 @@
 
 
 (def ^:private header
-  (b/ordered-map
-   :tag    tag
-   :length :int-be))
+  (b/ordered-map :tag    tag
+                 :length :int-be))
 
 (def header-length 5)
 
@@ -72,26 +69,21 @@
 
 ;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-;; диспетчерезация сообщений от сервера идет по тэгу и длине сообщения О_о
-
 (def StartupMessage
   {:tag nil
    :codec (b/compile-codec
-           [(b/ordered-map
-             :version-major :short-be
-             :version-minor :short-be
-             :parameters    (b/repeated [c-string c-string]))
+           [(b/ordered-map :version-major :short-be
+                           :version-minor :short-be
+                           :parameters    (b/repeated [c-string c-string]))
             (b/constant :byte 0)]
            (fn [val]
              [(update val :parameters #(map (fn [[k v]] [(name k) v]) %))
               0])
            not-used)})
 
-(def auth-code->codec
+(def ^:private auth-code->codec
   {5 (b/compile-codec
-      (b/ordered-map
-       ;; хотя может это должны быть просто байты
-       :salt (b/string "ASCII" :length 4))
+      (b/ordered-map :salt (b/blob :length 4))
       not-used
       #(assoc % :name :AuthenticationMD5Password))})
 
