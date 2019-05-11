@@ -19,6 +19,9 @@
 (defn new []
   (CompletableFuture.))
 
+(defn completed [val]
+  (CompletableFuture/completedFuture val))
+
 (defn then-apply [future f & args]
   (.thenApply future (->Function (fn [val] (apply f val args)))))
 

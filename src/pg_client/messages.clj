@@ -34,26 +34,27 @@
 (def ^:private c-string
   (b/c-string "UTF8"))
 
-(def ^:private header-with-tag
+(def ^:private message-with-tag
   (b/ordered-map :tag    tag
                  :length :int-be
-                 :body   (b/blob)))
+                 :body   (b/blob)
+                 :end    (b/constant :byte 0)))
 
-(def ^:private header-without-tag
+(def ^:private message-without-tag
   (b/ordered-map :length :int-be
-                 :body   (b/blob)))
+                 :body   (b/blob)
+                 :end    (b/constant :byte 0)))
 
 (defn encode [spec value]
   (let [tag       (:tag spec)
         codec     (:codec spec)
         arr       (encode-as-byte-array codec value)
-        length    (+ 4 (count arr)) ;; tag не считается
-        res-codec (if (some? tag) header-with-tag header-without-tag)
+        length    (+ 5 (count arr)) ;; tag не считается
+        res-codec (if (some? tag) message-with-tag message-without-tag)
         res-bytes (encode-as-byte-array res-codec {:tag    tag
                                                    :length length
                                                    :body   arr})]
     (ByteBuffer/wrap res-bytes)))
-
 
 (def ^:private header
   (b/ordered-map :tag    tag
@@ -72,17 +73,23 @@
 (def StartupMessage
   {:tag nil
    :codec (b/compile-codec
-           [(b/ordered-map :version-major :short-be
-                           :version-minor :short-be
-                           :parameters    (b/repeated [c-string c-string]))
-            (b/constant :byte 0)]
+           (b/ordered-map :version-major :short-be
+                          :version-minor :short-be
+                          :parameters    (b/repeated [c-string c-string]))
            (fn [val]
-             [(update val :parameters #(map (fn [[k v]] [(name k) v]) %))
-              0])
+             (update val :parameters #(map (fn [[k v]] [(name k) v]) %)))
            not-used)})
 
+(def PasswordMessage
+  {:tag \p
+   :codec (b/ordered-map :password (b/string "UTF8"))})
+
 (def ^:private auth-code->codec
-  {5 (b/compile-codec
+  {0 (b/compile-codec
+      (b/ordered-map)
+      not-used
+      #(assoc % :name :AuthenticationOk))
+   5 (b/compile-codec
       (b/ordered-map :salt (b/blob :length 4))
       not-used
       #(assoc % :name :AuthenticationMD5Password))})
