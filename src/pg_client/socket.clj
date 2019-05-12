@@ -1,4 +1,5 @@
 (ns pg-client.socket
+  (:refer-clojure :exclude [read])
   (:require
    [pg-client.future :as future])
   (:import
