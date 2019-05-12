@@ -23,8 +23,11 @@
   (let [buff   (ByteBuffer/allocateDirect length)
         future (future/new)]
     (.read sock buff future future/handler)
-    ;; наверное, нужно еще проверять сколько байтов на самом деле вычитали
-    (future/then-apply future (constantly buff))))
+    (-> future
+        ;; наверное, нужно еще проверять сколько байтов на самом деле вычитали
+        #_(future/then-apply #(doto %
+                                prn))
+        (future/then-apply (constantly buff)))))
 
 (defn write [sock buff]
   (let [future (future/new)]
