@@ -13,7 +13,7 @@
     (b/encode codec out value)
     (.toByteArray out)))
 
-(defn- buff->byte-array [buff]
+(defn buff->byte-array [buff]
   (.rewind buff)
   (let [length (.remaining buff)
         arr    (byte-array length)]
@@ -97,5 +97,38 @@
                     auth-code->codec
                     not-used)})
 
+(def ParameterStatus
+  {:tag 'S
+   :codec (b/compile-codec
+           (b/ordered-map :key   c-string
+                          :value c-string)
+           not-used
+           #(assoc % :name :ParameterStatus))})
+
+(def BackendKeyData
+  {:tag \K
+   :codec (b/compile-codec
+           (b/ordered-map :pid        :int-be
+                          :secret-key :int-be)
+           not-used
+           #(assoc % :name :BackendKeyData))})
+
+(def ReadyForQuery
+  {:tag \Z
+   :codec (b/compile-codec
+           (b/ordered-map :status (b/compile-codec
+                                   :byte
+                                   not-used
+                                   (comp {\I :idle, \T :transaction, \E :error} char)))
+           not-used
+           #(assoc % :name :ReadyForQuery))})
+
+(def Query
+  {:tag \Q
+   :codec (b/ordered-map :query c-string)})
+
 (def tag->spec
-  {\R Authentication})
+  {\R Authentication
+   \S ParameterStatus
+   \K BackendKeyData
+   \Z ReadyForQuery})
