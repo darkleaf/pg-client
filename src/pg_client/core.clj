@@ -5,23 +5,29 @@
    [pg-client.socket :as sock]
    [pg-client.util :as util]))
 
-(defmulti handle-response (fn [resp ctx sock] (:name resp)))
+(defmulti handle-response (fn [sock resp ctx] (:name resp)))
 
-(defn round-trip [sock req-spec data ctx]
-  (-> (sock/write sock (m/encode req-spec data))
-      (future/then-next #(sock/read sock m/header-length))
+(defn- send-request [sock req-spec data]
+  (sock/write sock (m/encode req-spec data)))
+
+(defn- receive-response [sock ctx]
+  (-> (sock/read sock m/header-length)
       (future/then-apply m/decode-header)
       (future/then-compose (fn [{:keys [tag length]}]
                              (let [resp-spec (m/tag->spec tag)]
                                (-> (sock/read sock length)
                                    (future/then-apply #(m/decode-body resp-spec %))))))
-      (future/then-compose handle-response ctx sock)))
+      (future/then-compose #(handle-response sock % ctx))))
 
-(defmethod handle-response :AuthenticationMD5Password [{:keys [salt]}
-                                                       {:keys [user password] :as ctx}
-                                                       sock]
+(defn round-trip [sock req-spec data ctx]
+  (-> (send-request sock req-spec data)
+      (future/then-next #(receive-response sock ctx))))
+
+(defmethod handle-response :AuthenticationMD5Password [sock
+                                                       {:keys [salt]}
+                                                       {:keys [user password]}]
   (let [digest (util/postgres-md5-password-hash user password salt)]
-    (round-trip sock m/PasswordMessage {:password digest} ctx)))
+    (round-trip sock m/PasswordMessage {:password digest} nil)))
 
 (defmethod handle-response :AuthenticationOk [resp ctx sock]
   (future/completed :AuthenticationOk))
@@ -35,11 +41,13 @@
                       {:version-major 3
                        :version-minor 0
                        :parameters    (select-keys opts [:database :user])}
-                      opts)))))
+                      opts))
+        (future/then-apply (constantly {:sock sock})))))
 
 (comment
-  (future/get (connect {:host     "localhost"
-                        :port     4401
-                        :database "postgres"
-                        :user     "postgres"
-                        :password "password"})))
+  (let [conn (future/get (connect {:host     "localhost"
+                                   :port     4401
+                                   :database "postgres"
+                                   :user     "postgres"
+                                   :password "password"}))]
+    (future/get (query conn "select 1 + 1;"))))
