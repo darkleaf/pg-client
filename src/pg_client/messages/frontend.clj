@@ -11,7 +11,6 @@
     (b/encode codec out value)
     (.toByteArray out)))
 
-;; можно попробовать оставить один тип, и передавать `{:tag nil}`, может зараработает
 (def ^:private message-with-tag
   (b/ordered-map :tag    codec/tag
                  :length :int-be
