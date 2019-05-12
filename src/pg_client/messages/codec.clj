@@ -20,3 +20,10 @@
          %)
    #(reduce (fn [acc [k v]] (assoc acc (keyword k) v))
             {} %)))
+
+;; hack
+(def null
+  (b/compile-codec
+   (byte-array 0)
+   (constantly (byte-array 0))
+   (constantly nil)))

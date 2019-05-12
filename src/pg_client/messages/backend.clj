@@ -40,7 +40,7 @@
                    auth-codes))
 
 (def ^:private auth-code->codec
-  {:AuthenticationOk          (b/ordered-map)
+  {:AuthenticationOk          codec/null
    :AuthenticationMD5Password (b/ordered-map :salt (b/blob :length 4))})
 
 (def Authentication
@@ -78,12 +78,43 @@
   {:tag \E
    :codec (b/repeated [codec/char codec/c-string])})
 
+(def RowDescription
+  {:tag \T
+   :codec (b/repeated
+           (b/ordered-map :name             codec/c-string
+                          :table-oid        :int-be
+                          :attribute-number :short-be
+                          :type-oid         :int-be
+                          :type-size        :short-be
+                          :type-modifier    :int-be
+                          :format-code      :short-be)
+           :prefix :short-be)})
+
+(def DataRow
+  {:tag \D
+   :codec (b/repeated
+           (b/header :int-be
+                     (fn header->body-codec [length]
+                       (if (= -1 length)
+                         codec/null
+                         (b/blob :length length)))
+                     "not used")
+           :prefix :short-be)})
+
+(def CommandComplete
+  {:tag \C
+   :codec codec/c-string})
+
+
 (def tag->spec
   (let [specs [Authentication
                ParameterStatus
                BackendKeyData
                ReadyForQuery
-               ErrorResponse]]
+               ErrorResponse
+               RowDescription
+               DataRow
+               CommandComplete]]
     (reduce (fn [acc {:as spec, :keys [tag]}]
               (assoc acc tag spec))
             {}

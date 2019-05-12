@@ -43,6 +43,7 @@
     (round-trip conn m.f/PasswordMessage {:password digest})))
 
 (defmethod handle-auth-response :AuthenticationOk [sock resp]
+  (prn resp)
   (receive-response sock))
 
 (defmethod handle-response m.b/ParameterStatus [conn spec resp]
@@ -64,6 +65,22 @@
   (prn resp)
 
   (future/completed nil))
+
+(defmethod handle-response m.b/RowDescription [conn spec resp]
+  (prn resp)
+
+  (receive-response conn))
+
+(defmethod handle-response m.b/DataRow [conn spec resp]
+  (prn resp)
+
+  (receive-response conn))
+
+(defmethod handle-response m.b/CommandComplete [conn spec resp]
+  (prn resp)
+
+  (future/completed nil))
+
 
 
 
