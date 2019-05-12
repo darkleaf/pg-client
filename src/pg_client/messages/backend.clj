@@ -74,12 +74,16 @@
   {:tag \Z
    :codec (b/ordered-map :status transaction-status)})
 
+(def ErrorResponse
+  {:tag \E
+   :codec (b/repeated [codec/char codec/c-string])})
 
 (def tag->spec
   (let [specs [Authentication
                ParameterStatus
                BackendKeyData
-               ReadyForQuery]]
+               ReadyForQuery
+               ErrorResponse]]
     (reduce (fn [acc {:as spec, :keys [tag]}]
               (assoc acc tag spec))
             {}

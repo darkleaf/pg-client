@@ -55,6 +55,12 @@
   (prn resp)
   (future/completed :ok))
 
+(defmethod handle-response m.b/ErrorResponse [sock spec resp ctx]
+  (prn resp)
+  (future/completed :error))
+
+
+
 (defn connect [{:keys [host port] :as opts}]
   (let [sock (sock/open)]
     (-> (sock/connect sock host port)
