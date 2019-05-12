@@ -26,10 +26,7 @@
       (b/decode codec in))))
 
 (def ^:private tag
-  (b/compile-codec
-   (b/string "ASCII" :length 1)
-   str
-   first))
+  (b/compile-codec :byte byte char))
 
 (def ^:private c-string
   (b/c-string "UTF8"))
