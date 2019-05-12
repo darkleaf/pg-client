@@ -19,7 +19,7 @@
       (b/decode codec in))))
 
 (def ^:private header
-  (b/ordered-map :tag    codec/tag
+  (b/ordered-map :tag    codec/char
                  :length :int-be))
 
 (def header-length 5)

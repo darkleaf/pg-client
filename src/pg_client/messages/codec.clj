@@ -1,9 +1,11 @@
 (ns pg-client.messages.codec
+  (:refer-clojure :exclude [char])
   (:require
+   [clojure.core :as c]
    [org.clojars.smee.binary.core :as b]))
 
-(def tag
-  (b/compile-codec :byte byte char))
+(def char
+  (b/compile-codec :byte byte c/char))
 
 (def c-string
   (b/c-string "UTF8"))

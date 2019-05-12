@@ -12,7 +12,7 @@
     (.toByteArray out)))
 
 (def ^:private message-with-tag
-  (b/ordered-map :tag    codec/tag
+  (b/ordered-map :tag    codec/char
                  :length :int-be
                  :body   (b/blob)
                  :end    (b/constant :byte 0)))
