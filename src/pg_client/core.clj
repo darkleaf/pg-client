@@ -6,75 +6,82 @@
    [pg-client.socket :as sock]
    [pg-client.util :as util]))
 
-(defmulti handle-response (fn [sock spec resp ctx] spec))
+(defmulti handle-response (fn [conn spec resp] spec))
 
-(defn- send-request [sock req-spec data]
-  (sock/write sock (m.f/encode req-spec data)))
+(defn- send-request [conn req-spec data]
+  (let [sock (:sock @conn)]
+    (sock/write sock (m.f/encode req-spec data))))
 
-(defn- receive-response [sock ctx]
-  (-> (sock/read sock m.b/header-length)
-      (future/then-apply m.b/decode-header)
-      (future/then-compose
-       (fn [{:keys [tag length]}]
+(defn- receive-response [conn]
+  (let [sock (:sock @conn)]
+    (-> (sock/read sock m.b/header-length)
+        (future/then-apply m.b/decode-header)
+        (future/then-compose
+         (fn [{:keys [tag length]}]
 
-         (prn [tag length])
+           (prn [tag length])
 
-         (let [resp-spec (m.b/tag->spec tag)]
-           (-> (sock/read sock (- length 4))
-               (future/then-apply #(m.b/decode-body resp-spec %))
-               (future/then-compose #(handle-response sock resp-spec % ctx))))))))
+           (let [resp-spec (m.b/tag->spec tag)]
+             (-> (sock/read sock (- length 4))
+                 (future/then-apply #(m.b/decode-body resp-spec %))
+                 (future/then-compose #(handle-response conn resp-spec %)))))))))
 
-(defn round-trip [sock req-spec data ctx]
-  (-> (send-request sock req-spec data)
-      (future/then-next #(receive-response sock ctx))))
+(defn round-trip [conn req-spec data]
+  (-> (send-request conn req-spec data)
+      (future/then-next #(receive-response conn))))
 
-(defmulti handle-auth-response (fn [sock resp ctx] (:header resp)))
+(defmulti handle-auth-response (fn [conn resp] (:header resp)))
 
-(defmethod handle-response m.b/Authentication [sock spec resp ctx]
-  (handle-auth-response sock resp ctx))
+(defmethod handle-response m.b/Authentication [conn spec resp]
+  (handle-auth-response conn resp))
 
-(defmethod handle-auth-response :AuthenticationMD5Password [sock resp {:keys [user password]}]
-  (let [salt   (-> resp :body :salt)
-        digest (util/postgres-md5-password-hash user password salt)]
-    (round-trip sock m.f/PasswordMessage {:password digest} nil)))
+(defmethod handle-auth-response :AuthenticationMD5Password [conn resp]
+  (let [user     (-> @conn :opts :user)
+        password (-> @conn :opts :password)
+        salt     (-> resp :body :salt)
+        digest   (util/postgres-md5-password-hash user password salt)]
+    (round-trip conn m.f/PasswordMessage {:password digest})))
 
-(defmethod handle-auth-response :AuthenticationOk [sock resp ctx]
-  (receive-response sock {}))
+(defmethod handle-auth-response :AuthenticationOk [sock resp]
+  (receive-response sock))
 
-(defmethod handle-response m.b/ParameterStatus [sock spec resp ctx]
+(defmethod handle-response m.b/ParameterStatus [conn spec resp]
   (prn resp)
 
-  (receive-response sock {}))
+  (receive-response conn))
 
-(defmethod handle-response m.b/BackendKeyData [sock spec resp ctx]
+(defmethod handle-response m.b/BackendKeyData [conn spec resp]
   (prn resp)
 
-  (receive-response sock {}))
+  (receive-response conn))
 
-(defmethod handle-response m.b/ReadyForQuery [sock spec resp ctx]
+(defmethod handle-response m.b/ReadyForQuery [conn spec resp]
   (prn resp)
-  (future/completed :ok))
 
-(defmethod handle-response m.b/ErrorResponse [sock spec resp ctx]
+  (future/completed nil))
+
+(defmethod handle-response m.b/ErrorResponse [conn spec resp]
   (prn resp)
-  (future/completed :error))
+
+  (future/completed nil))
 
 
 
 (defn connect [{:keys [host port] :as opts}]
-  (let [sock (sock/open)]
+  (let [sock (sock/open)
+        conn (atom {:sock sock
+                    :opts opts})]
     (-> (sock/connect sock host port)
         (future/then-next
-         #(round-trip sock
+         #(round-trip conn
                       m.f/StartupMessage
                       {:version-major 3
                        :version-minor 0
-                       :parameters    (select-keys opts [:database :user])}
-                      opts))
-        (future/then-apply (constantly {:sock sock})))))
+                       :parameters    (select-keys opts [:database :user])}))
+        (future/then-apply (constantly conn)))))
 
-(defn query [{:keys [sock]} q]
-  (round-trip sock m.f/Query {:query q} nil))
+(defn query [conn q]
+  (round-trip conn m.f/Query {:query q}))
 
 (comment
   (let [conn (future/get (connect {:host     "localhost"
