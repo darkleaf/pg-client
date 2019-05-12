@@ -42,3 +42,7 @@
 (def PasswordMessage
   {:tag \p
    :codec (b/ordered-map :password codec/string)})
+
+(def Query
+  {:tag \Q
+   :codec (b/ordered-map :query codec/string)})

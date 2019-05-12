@@ -74,9 +74,6 @@
   {:tag \Z
    :codec (b/ordered-map :status transaction-status)})
 
-(def Query
-  {:tag \Q
-   :codec (b/ordered-map :query codec/c-string)})
 
 (def tag->spec
   (let [specs [Authentication

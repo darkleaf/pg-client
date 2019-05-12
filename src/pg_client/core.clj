@@ -68,7 +68,7 @@
         (future/then-apply (constantly {:sock sock})))))
 
 (defn query [{:keys [sock]} q]
-  (round-trip sock m.b/Query {:query q} nil))
+  (round-trip sock m.f/Query {:query q} nil))
 
 (comment
   (let [conn (future/get (connect {:host     "localhost"
