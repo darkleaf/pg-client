@@ -34,8 +34,7 @@
     (ByteBuffer/wrap res-bytes)))
 
 (def StartupMessage
-  {:tag nil
-   :codec (b/ordered-map :version-major :short-be
+  {:codec (b/ordered-map :version-major :short-be
                          :version-minor :short-be
                          :parameters    codec/key-value)})
 
